@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>사이트 닉네임 및 플레이 시간 설정</title>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            height: 100vh;
+            margin: 0;
+            background-color: #ecf0f1; /* 연한 파란색 배경 */
+            font-family: Arial, sans-serif; /* 폰트 설정 */
+        }
+        #nickname, #playTime, #moneyDisplay, #imageDescription, #hallOfFame {
+            margin-bottom: 10px;
+            font-size: 18px; /* 제목 크기 설정 */
+            font-weight: bold; /* 제목 굵게 설정 */
+            color: #2c3e50; /* 텍스트 색상 */
+        }
+        #summonButton, #resetButton, #saveButton, #loadButton {
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+            background-color: #3498db; /* 버튼 배경색 */
+            color: #fff; /* 버튼 텍스트 색상 */
+            border: none;
+            border-radius: 5px;
+            transition: background-color 0.3s ease;
+        }
+        #summonButton:hover, #resetButton:hover, #saveButton:hover, #loadButton:hover {
+            background-color: #2980b9; /* 마우스 호버 시 버튼 배경색 변경 */
+        }
+        #summonedImageContainer {
+            width: 90%; /* 이미지 컨테이너의 너비를 설정 */
+            max-width: 300px; /* 최대 너비 설정 */
+            margin-top: 10px; /* 이미지와 제목 간 간격 설정 */
+            text-align: center; /* 가운데 정렬 */
+        }
+        #summonedImage {
+            max-width: 100%; /* 이미지 최대 너비 설정 */
+            height: auto; /* 이미지 높이 자동 조절 */
+            display: none; /* 초기에는 숨김 */
+        }
+        #imageDescription {
+            font-size: 16px; /* 이미지 설명 텍스트 크기 설정 */
+            color: #34495e; /* 이미지 설명 텍스트 색상 설정 */
+        }
+        #saveLoadButtons {
+            margin-top: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        #loadButton {
+            margin-left: 10px;
+        }
+        #hallOfFame {
+            list-style-type: none; /* 명예의 전당 리스트 스타일 제거 */
+            padding: 0; /* 명예의 전당 리스트 패딩 제거 */
+            margin: 0; /* 명예의 전당 리스트 마진 제거 */
+            text-align: center; /* 명예의 전당 텍스트 가운데 정렬 */
+        }
+        #hallOfFame li {
+            margin-bottom: 5px; /* 명예의 전당 아이템 간 간격 설정 */
+            font-size: 14px; /* 명예의 전당 아이템 텍스트 크기 설정 */
+            color: #7f8c8d; /* 명예의 전당 아이템 텍스트 색상 설정 */
+        }
+        .grade {
+            font-weight: bold; /* 등급 텍스트 굵게 설정 */
+            margin-right: 5px; /* 등급 텍스트 오른쪽 마진 설정 */
+        }
+
+        /* 모바일 화면 CSS */
+        @media only screen and (max-width: 600px) {
+            #summonedImageContainer {
+                width: 80%; /* 모바일 화면에서 이미지 컨테이너의 너비를 더 좁게 설정 */
+            }
+        }
+    </style>
+    <script>
+        var money = 50000; // 기본 돈
+        var summonCost = 1000; // 소환 비용
+        var hallOfFame = []; // 명예의 전당
+
+        // 확률 설정 (0 ~ 1)
+        var probabilities = {
+            1: 0.25, // image1.jpg
+            2: 0.25, // image2.jpg
+            3: 0.25, // image3.jpg
+            4: 0.25  // image4.jpg
+        };
+
+        // 이미지 제목
+        var titles = {
+            1: "이미지 1",
+            2: "이미지 2",
+            3: "이미지 3",
+            4: "이미지 4"
+        };
+
+        // 이미지 등급
+        var grades = {
+            1: "기본",
+            2: "희귀",
+            3: "레어",
+            4: "슈퍼레어",
+            5: "영웅",
+            6: "슈퍼영웅",
+            7: "에픽",
+            8: "슈퍼에픽",
+            9: "신화",
+            10: "레전더리"
+        };
+
+        // 이미지 설명
+        var descriptions = {
+            1: "이 사진은 기본적인 사진입니다.",
+            2: "이 사진은 희귀한 사진입니다.",
+            3: "이 사진은 레어한 사진입니다.",
+            4: "이 사진은 슈퍼레어한 사진입니다."
+        };
+
+        // 페이지가 로드될 때 실행되는 함수
+        window.onload = function() {
+            // 닉네임 설정 함수 호출
+            setNickname();
+            // 플레이 시간 표시 함수 호출
+            displayPlayTime();
+            // 현재 돈 표시 함수 호출
+            displayMoney();
+            // 명예의 전당 표시 함수 호출
+            displayHallOfFame();
+        };
+
+        // 닉네임 설정 함수
+        function setNickname() {
+            // 로컬 스토리지에서 닉네임 가져오기
+            var nickname = localStorage.getItem("nickname");
+            
+            // 만약 로컬 스토리지에 닉네임이 없으면
+            if (!nickname) {
+                // 닉네임을 입력받음
+                nickname = prompt("닉네임을 입력하세요:");
+                
+                // 입력받은 닉네임을 로컬 스토리지에 저장
+                localStorage.setItem("nickname", nickname);
+            }
+            
+            // 닉네임을 화면에 출력
+            document.getElementById("nickname").textContent = "안녕하세요, " + nickname + "님!";
+        }
+
+        // 플레이 시간 표시 함수
+        function displayPlayTime() {
+            var startTime = localStorage.getItem("startTime");
+            if (!startTime) {
+                startTime = new Date().getTime(); // 페이지에 처음 접속한 시간을 저장
+                localStorage.setItem("startTime", startTime);
+            }
+            var currentTime = new Date().getTime();
+            var playTime = currentTime - startTime;
+            var hours = Math.floor(playTime / (1000 * 60 * 60));
+            var minutes = Math.floor((playTime % (1000 * 60 * 60)) / (1000 * 60));
+            var seconds = Math.floor((playTime % (1000 * 60)) / 1000);
+            var formattedTime = formatTime(hours) + ":" + formatTime(minutes) + ":" + formatTime(seconds);
+            document.getElementById("playTime").textContent = "플레이 시간: " + formattedTime;
+            setTimeout(displayPlayTime, 1000); // 1초마다 갱신
+        }
+
+        // 현재 돈 표시 함수
+        function displayMoney() {
+            document.getElementById("moneyDisplay").textContent = "현재 돈: " + money + "원";
+        }
+
+        // 명예의 전당 표시 함수
+        function displayHallOfFame() {
+            var sortedHallOfFame = hallOfFame.slice().sort((a, b) => b.grade - a.grade); // 등급이 높은 순서로 정렬
+            var hallOfFameList = document.getElementById("hallOfFame");
+            hallOfFameList.innerHTML = "<b>명예의 전당:</b>";
+            for (var i = 0; i < sortedHallOfFame.length; i++) {
+                var listItem = document.createElement("li");
+                listItem.textContent = "[" + grades[sortedHallOfFame[i].grade] + "] " + sortedHallOfFame[i].title + " (중복: " + sortedHallOfFame[i].count + "회)";
+                hallOfFameList.appendChild(listItem);
+            }
+        }
+
+        // 소환 버튼 클릭 시 실행되는 함수
+        function summon() {
+            if (money >= summonCost) {
+                money -= summonCost; // 소환 비용 차감
+                displayMoney(); // 현재 돈 표시 갱신
+                var randomNumber = Math.random();
+                var imageNumber = 1;
+                var cumulativeProbability = 0;
+                for (var key in probabilities) {
+                    cumulativeProbability += probabilities[key];
+                    if (randomNumber <= cumulativeProbability) {
+                        imageNumber = key;
+                        break;
+                    }
+                }
+                var imageTitle = titles[imageNumber];
+                var imageGrade = grades[imageNumber];
+                var existingEntryIndex = hallOfFame.findIndex(entry => entry.title === imageTitle);
+                if (existingEntryIndex !== -1) {
+                    hallOfFame[existingEntryIndex].count++;
+                } else {
+                    hallOfFame.push({ title: imageTitle, grade: imageNumber, count: 0 });
+                }
+                displayHallOfFame();
+                var imageDescription = descriptions[imageNumber];
+                var imageSource = "image" + imageNumber + ".jpg";
+                document.getElementById("summonedImage").src = imageSource;
+                document.getElementById("imageDescription").textContent = "[" + imageGrade + "] " + imageTitle + " - " + imageDescription;
+                document.getElementById("summonedImage").style.display = "block";
+                document.getElementById("imageDescription").style.display = "block";
+                saveGameState(); // 게임 상태 저장
+            } else {
+                alert("소환에 필요한 돈이 부족합니다."); // 돈이 부족할 때 알림 메시지
+            }
+        }
+
+        // 게임 상태 저장 함수
+        function saveGameState() {
+            localStorage.setItem("money", money);
+            localStorage.setItem("hallOfFame", JSON.stringify(hallOfFame));
+        }
+
+        // 게임 상태 불러오기 함수
+        function loadGameState() {
+            money = parseInt(localStorage.getItem("money"));
+            hallOfFame = JSON.parse(localStorage.getItem("hallOfFame"));
+            displayMoney();
+            displayHallOfFame();
+        }
+
+        // 시간 형식화 함수
+        function formatTime(time) {
+            return time < 10 ? "0" + time : time;
+        }
+
+        // 2분마다 돈 추가 함수
+        setInterval(function() {
+            money += 20000;
+            displayMoney();
+        }, 120000); // 2분(120000밀리초)마다 실행
+
+        // 닉네임 리셋 함수
+        function resetNickname() {
+            // 로컬 스토리지에서 닉네임 제거
+            localStorage.removeItem("nickname");
+            // 새로고침하여 새로운 닉네임 입력
+            location.reload();
+        }
+    </script>
+</head>
+<body>
+    <div id="nickname"></div>
+    <div id="playTime"></div>
+    <div id="moneyDisplay"></div>
+    <button id="summonButton" onclick="summon()">소환하기</button>
+    <div id="summonedImageContainer">
+        <img id="summonedImage">
+        <div id="imageDescription"></div>
+    </div>
+    <button id="resetButton" onclick="resetNickname()">닉네임 재설정</button>
+    <div id="saveLoadButtons">
+        <button id="saveButton" onclick="saveGameState()">저장하기</button>
+        <button id="loadButton" onclick="loadGameState()">불러오기</button>
+    </div>
+    <ul id="hallOfFame"></ul>
+</body>
+</html>
